@@ -8,10 +8,53 @@
     "dev": "concurrently \"cross-env NODE_ENV=development npm run watch\" \"cross-env NODE_ENV=development electron .\"",
     "watch": "webpack --config webpack.config.js --watch",
     "build": "webpack --config webpack.config.js --mode production",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "clean": "rimraf release-builds",
+    "package": "npm run build && electron-builder build",
+    "package-clean": "npm run clean && npm run package",
+    "package-win": "npm run build && electron-builder build --win --x64",
+    "package-win-clean": "npm run clean && npm run package-win",
+    "package-mac": "npm run build && electron-builder build --mac",
+    "package-linux": "npm run build && electron-builder build --linux"
   },
   "author": "sephonix",
   "license": "ISC",
+  "build": {
+    "appId": "com.sephonix.promptchain",
+    "productName": "PromptChain",
+    "files": [
+      "src/**/*",
+      "index.html",
+      "dist/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "resources",
+      "output": "release-builds"
+    },
+    "win": {
+      "target": [
+        "zip",
+        "nsis"
+      ],
+      "icon": "resources/icon.ico"
+    },
+    "mac": {
+      "target": [
+        "zip",
+        "dmg"
+      ],
+      "icon": "resources/icon.icns"
+    },
+    "linux": {
+      "target": [
+        "zip",
+        "AppImage"
+      ],
+      "icon": "resources/icon.png"
+    }
+  },
   "devDependencies": {
     "@babel/core": "^7.24.0",
     "@babel/preset-env": "^7.24.0",
@@ -23,15 +66,18 @@
     "cross-env": "^7.0.3",
     "css-loader": "^6.10.0",
     "electron": "^35.1.4",
+    "electron-builder": "^26.0.12",
     "file-loader": "^6.2.0",
     "postcss": "^8.4.35",
     "postcss-loader": "^8.1.0",
+    "rimraf": "^6.0.1",
     "style-loader": "^3.3.4",
     "tailwindcss": "^3.4.1",
     "webpack": "^5.90.3",
     "webpack-cli": "^5.1.4"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.40.0",
     "@emotion/react": "^11.11.3",
     "@emotion/styled": "^11.11.0",
     "@fontsource/roboto": "^5.2.5",
@@ -40,6 +86,8 @@
     "axios": "^1.6.7",
     "electron-squirrel-startup": "^1.0.1",
     "litegraph.js": "^0.7.18",
+    "node-fetch": "^3.3.2",
+    "openai": "^4.96.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "reactflow": "^11.11.4",

@@ -2,99 +2,122 @@
  * Settings service for managing API provider configurations
  */
 
-// Default settings for API providers
-const defaultSettings = {
-  providers: {
-    openai: {
-      enabled: true,
-      apiKey: "",
-      models: [
-        { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo" },
-        { id: "gpt-4", name: "GPT-4" },
-        { id: "gpt-4-turbo", name: "GPT-4 Turbo" }
-      ]
-    },
-    anthropic: {
-      enabled: false,
-      apiKey: "",
-      models: [
-        { id: "claude-2", name: "Claude 2" },
-        { id: "claude-instant", name: "Claude Instant" },
-        { id: "claude-3-opus", name: "Claude 3 Opus" },
-        { id: "claude-3-sonnet", name: "Claude 3 Sonnet" },
-        { id: "claude-3-haiku", name: "Claude 3 Haiku" }
-      ]
-    },
-    mistralai: {
-      enabled: false,
-      apiKey: "",
-      models: [
-        { id: "mistral-small", name: "Mistral Small" },
-        { id: "mistral-medium", name: "Mistral Medium" },
-        { id: "mistral-large", name: "Mistral Large" }
-      ]
-    },
-    cohere: {
-      enabled: false,
-      apiKey: "",
-      models: [
-        { id: "command", name: "Command" },
-        { id: "command-light", name: "Command Light" },
-        { id: "command-nightly", name: "Command Nightly" }
-      ]
-    },
-    deepseek: {
-      enabled: false,
-      apiKey: "",
-      models: [
-        { id: "deepseek-coder", name: "DeepSeek Coder" },
-        { id: "deepseek-llm", name: "DeepSeek LLM" }
-      ]
-    },
-    grok: {
-      enabled: false,
-      apiKey: "",
-      models: [
-        { id: "grok-1", name: "Grok-1" }
-      ]
-    },
-    openrouter: {
-      enabled: false,
-      apiKey: "",
-      models: [
-        { id: "openrouter-default", name: "Default Model" },
-        { id: "openrouter-mix", name: "Router Mix" }
-      ]
-    }
-  },
-  defaultProvider: "openai",
-  defaultModel: "gpt-3.5-turbo"
+import { getAllProviders, getProvider } from '../providers';
+
+// Safely access electron's ipcRenderer
+const ipcRenderer = window.electron?.ipcRenderer;
+
+// Create default settings by importing provider information
+const createDefaultSettings = async () => {
+  try {
+    // Get providers info from main process (where we can require the provider modules)
+    const providersInfo = await ipcRenderer.invoke('get-providers-info');
+    
+    // Create settings structure
+    const settings = {
+      providers: {},
+      defaultProvider: 'openai',
+      defaultModel: 'gpt-4o-mini'
+    };
+    
+    // Add each provider with empty API key
+    Object.keys(providersInfo).forEach(providerId => {
+      const provider = providersInfo[providerId];
+      settings.providers[providerId] = {
+        enabled: providerId === 'openai', // Enable OpenAI by default
+        apiKey: '',
+        models: provider.models || []
+      };
+    });
+    
+    return settings;
+  } catch (error) {
+    console.error('Error creating default settings:', error);
+    
+    // Fallback default settings if we can't get provider info
+    return {
+      providers: {
+        openai: {
+          enabled: true,
+          apiKey: '',
+          models: []
+        }
+      },
+      defaultProvider: 'openai',
+      defaultModel: 'gpt-4o-mini'
+    };
+  }
+};
+
+// Cache for default settings
+let defaultSettingsCache = null;
+
+/**
+ * Get default settings (cached)
+ * @returns {Promise<Object>} The default settings object
+ */
+export const getDefaultSettings = async () => {
+  if (!defaultSettingsCache) {
+    defaultSettingsCache = await createDefaultSettings();
+  }
+  return JSON.parse(JSON.stringify(defaultSettingsCache));
 };
 
 /**
  * Get settings from local storage or return defaults
- * @returns {Object} The settings object
+ * @returns {Promise<Object>} The settings object
  */
-export const getSettings = () => {
+export const getSettings = async () => {
   try {
     const storedSettings = localStorage.getItem('promptChainSettings');
     if (storedSettings) {
-      return JSON.parse(storedSettings);
+      const loadedSettings = JSON.parse(storedSettings);
+      // Get default settings to ensure we have a complete structure
+      const defaultSettings = await getDefaultSettings();
+      
+      // Merge saved provider settings (enabled, apiKey) into the final settings
+      Object.keys(defaultSettings.providers).forEach(providerId => {
+        if (loadedSettings.providers && loadedSettings.providers[providerId]) {
+          defaultSettings.providers[providerId].enabled = 
+            loadedSettings.providers[providerId].enabled;
+          defaultSettings.providers[providerId].apiKey = 
+            loadedSettings.providers[providerId].apiKey;
+        }
+      });
+
+      // Merge top-level settings
+      if (loadedSettings.defaultProvider) {
+        defaultSettings.defaultProvider = loadedSettings.defaultProvider;
+      }
+      if (loadedSettings.defaultModel) {
+        defaultSettings.defaultModel = loadedSettings.defaultModel;
+      }
+      
+      return defaultSettings;
     }
-    return defaultSettings;
+    
+    // If no stored settings, return defaults
+    return getDefaultSettings();
   } catch (error) {
     console.error('Error loading settings:', error);
-    return defaultSettings;
+    return getDefaultSettings();
   }
 };
 
 /**
- * Save settings to local storage
+ * Save settings to local storage and synchronize with main process
  * @param {Object} settings - The settings object to save
  */
-export const saveSettings = (settings) => {
+export const saveSettings = async (settings) => {
   try {
+    // Save to localStorage for UI state
     localStorage.setItem('promptChainSettings', JSON.stringify(settings));
+    
+    // Synchronize with main process if available
+    if (ipcRenderer) {
+      console.log('[settingsService] Syncing settings with main process');
+      await ipcRenderer.invoke('save-settings', settings);
+    }
   } catch (error) {
     console.error('Error saving settings:', error);
   }
@@ -105,30 +128,33 @@ export const saveSettings = (settings) => {
  * @param {string} providerId - The provider ID
  * @param {Object} providerSettings - The new provider settings
  */
-export const updateProviderSettings = (providerId, providerSettings) => {
-  const settings = getSettings();
+export const updateProviderSettings = async (providerId, providerSettings) => {
+  const settings = await getSettings();
   settings.providers[providerId] = {
     ...settings.providers[providerId],
     ...providerSettings
   };
-  saveSettings(settings);
+  await saveSettings(settings);
   return settings;
 };
 
 /**
  * Get all available models from enabled providers
- * @returns {Array} Array of available models with provider info
+ * @returns {Promise<Array>} Array of available models with provider info
  */
-export const getAvailableModels = () => {
-  const settings = getSettings();
+export const getAvailableModels = async () => {
+  const settings = await getSettings();
   const models = [];
   
-  Object.entries(settings.providers).forEach(([providerId, provider]) => {
-    if (provider.enabled) {
-      provider.models.forEach(model => {
+  // Get providers info from main process
+  const providersInfo = await ipcRenderer.invoke('get-providers-info');
+  
+  Object.entries(settings.providers).forEach(([providerId, providerSettings]) => {
+    if (providerSettings.enabled && providersInfo[providerId]) {
+      providersInfo[providerId].models.forEach(model => {
         models.push({
           providerId,
-          providerName: getProviderName(providerId),
+          providerName: providersInfo[providerId].name,
           ...model
         });
       });
@@ -141,28 +167,19 @@ export const getAvailableModels = () => {
 /**
  * Get formatted provider name from ID
  * @param {string} providerId - The provider ID
- * @returns {string} The formatted provider name
+ * @returns {Promise<string>} The formatted provider name
  */
-export const getProviderName = (providerId) => {
-  const providerNames = {
-    openai: "OpenAI",
-    anthropic: "Anthropic",
-    mistralai: "Mistral AI",
-    cohere: "Cohere",
-    deepseek: "DeepSeek",
-    grok: "Grok",
-    openrouter: "OpenRouter"
-  };
-  
-  return providerNames[providerId] || providerId;
+export const getProviderName = async (providerId) => {
+  const providersInfo = await ipcRenderer.invoke('get-providers-info');
+  return providersInfo[providerId]?.name || providerId;
 };
 
 /**
  * Check if settings have been configured for any provider
- * @returns {boolean} True if at least one provider is configured
+ * @returns {Promise<boolean>} True if at least one provider is configured
  */
-export const hasConfiguredProvider = () => {
-  const settings = getSettings();
+export const hasConfiguredProvider = async () => {
+  const settings = await getSettings();
   return Object.values(settings.providers).some(
     provider => provider.enabled && provider.apiKey
   );

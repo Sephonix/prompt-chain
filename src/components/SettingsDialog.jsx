@@ -15,7 +15,8 @@ import {
   Alert,
   Divider,
   IconButton,
-  Tooltip
+  Tooltip,
+  CircularProgress
 } from '@mui/material';
 import { 
   getSettings, 
@@ -23,6 +24,7 @@ import {
   updateProviderSettings, 
   getProviderName
 } from '../utils/settingsService';
+import WarningIcon from '@mui/icons-material/Warning';
 
 // Import provider icons
 import openaiIcon from '../assets/icons/openai.svg';
@@ -36,13 +38,32 @@ import openrouterIcon from '../assets/icons/openrouter.svg';
 // Provider configuration component
 const ProviderSettings = ({ providerId, settings, onChange }) => {
   const provider = settings.providers[providerId];
+  const [providerDisplayName, setProviderDisplayName] = useState(providerId);
+  
+  // Check if this provider is implemented
+  const isImplemented = providerId === 'openai' || providerId === 'anthropic';
+  
+  // Load provider name asynchronously
+  useEffect(() => {
+    const loadProviderName = async () => {
+      try {
+        const name = await getProviderName(providerId);
+        setProviderDisplayName(name);
+      } catch (error) {
+        console.error('Error loading provider name:', error);
+        setProviderDisplayName(providerId); // Fallback to ID
+      }
+    };
+    
+    loadProviderName();
+  }, [providerId]);
   
   // Get the appropriate icon for this provider
   const getProviderIcon = () => {
     const icons = {
       openai: openaiIcon,
       anthropic: anthropicIcon,
-      mistralai: mistralaiIcon,
+      mistral: mistralaiIcon,
       cohere: cohereIcon,
       deepseek: deepseekIcon,
       grok: grokIcon,
@@ -67,14 +88,28 @@ const ProviderSettings = ({ providerId, settings, onChange }) => {
           <Box 
             component="img" 
             src={getProviderIcon()} 
-            alt={`${getProviderName(providerId)} logo`}
+            alt={`${providerDisplayName} logo`}
             sx={{ width: 32, height: 32, mr: 2 }}
           />
         )}
         <Typography variant="h6" component="div">
-          {getProviderName(providerId)} Settings
+          {providerDisplayName} Settings
         </Typography>
+        {!isImplemented && (
+          <Tooltip title="This provider is not yet fully implemented">
+            <WarningIcon 
+              color="warning" 
+              sx={{ ml: 1, fontSize: 20 }} 
+            />
+          </Tooltip>
+        )}
       </Box>
+      
+      {!isImplemented && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          This provider is not yet fully implemented. Settings can be configured but API calls may not work.
+        </Alert>
+      )}
       
       <FormControlLabel
         control={
@@ -96,7 +131,7 @@ const ProviderSettings = ({ providerId, settings, onChange }) => {
         value={provider.apiKey}
         onChange={handleApiKeyChange}
         disabled={!provider.enabled}
-        helperText={`Enter your ${getProviderName(providerId)} API key`}
+        helperText={`Enter your ${providerDisplayName} API key`}
       />
       
       <Typography variant="subtitle2" sx={{ mt: 2 }}>
@@ -129,13 +164,44 @@ const ProviderSettings = ({ providerId, settings, onChange }) => {
 // Main Settings Dialog component
 const SettingsDialog = ({ open, onClose }) => {
   const [settings, setSettings] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('openai');
   const [saveStatus, setSaveStatus] = useState({ show: false, message: '', severity: 'success' });
+  const [providerNames, setProviderNames] = useState({});
 
   // Load settings on initial mount
   useEffect(() => {
     if (open) {
-      setSettings(getSettings());
+      const loadSettings = async () => {
+        try {
+          setLoading(true);
+          const settingsData = await getSettings();
+          setSettings(settingsData);
+          
+          // Load provider names
+          if (settingsData && settingsData.providers) {
+            const providerIds = Object.keys(settingsData.providers);
+            const names = {};
+            
+            for (const providerId of providerIds) {
+              try {
+                names[providerId] = await getProviderName(providerId);
+              } catch (error) {
+                console.error(`Error loading name for ${providerId}:`, error);
+                names[providerId] = providerId; // Fallback to ID
+              }
+            }
+            
+            setProviderNames(names);
+          }
+        } catch (error) {
+          console.error('Error loading settings:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      loadSettings();
     }
   }, [open]);
 
@@ -156,9 +222,9 @@ const SettingsDialog = ({ open, onClose }) => {
     }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     try {
-      saveSettings(settings);
+      await saveSettings(settings);
       setSaveStatus({
         show: true,
         message: 'Settings saved successfully!',
@@ -178,14 +244,45 @@ const SettingsDialog = ({ open, onClose }) => {
     }
   };
 
-  if (!settings) {
-    return null;
+  if (loading) {
+    return (
+      <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+        <DialogContent>
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+            <CircularProgress />
+            <Typography variant="body1" sx={{ ml: 2 }}>
+              Loading settings...
+            </Typography>
+          </Box>
+        </DialogContent>
+      </Dialog>
+    );
   }
+
+  if (!settings || !settings.providers) {
+    return (
+      <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+        <DialogContent>
+          <Alert severity="error">
+            Error loading settings. Please try again later.
+          </Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose}>Close</Button>
+        </DialogActions>
+      </Dialog>
+    );
+  }
+
+  // Check if a provider is implemented
+  const isProviderImplemented = (providerId) => {
+    return providerId === 'openai' || providerId === 'anthropic';
+  };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>
-        <Typography variant="h6">API Provider Settings</Typography>
+        <Typography variant="h6" component="div">API Provider Settings</Typography>
         <Typography variant="body2" color="text.secondary">
           Configure your AI model providers
         </Typography>
@@ -209,7 +306,17 @@ const SettingsDialog = ({ open, onClose }) => {
               <Tab 
                 key={providerId} 
                 value={providerId} 
-                label={getProviderName(providerId)}
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <span>{providerNames[providerId] || providerId}</span>
+                    {!isProviderImplemented(providerId) && (
+                      <WarningIcon 
+                        color="warning" 
+                        sx={{ ml: 0.5, fontSize: 16 }} 
+                      />
+                    )}
+                  </Box>
+                }
                 icon={
                   settings.providers[providerId].enabled ? (
                     <Box 

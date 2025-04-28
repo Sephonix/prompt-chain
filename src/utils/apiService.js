@@ -2,12 +2,14 @@
  * API Service for making calls to LLM providers
  */
 
+import { getSettings } from './settingsService';
+
 // Safely access electron's ipcRenderer
 const ipcRenderer = window.electron?.ipcRenderer;
 
 /**
  * Call a model API with the provided parameters
- * @param {string} model - The model to use (e.g., 'gpt-4', 'claude-2')
+ * @param {string} model - The model to use
  * @param {string} prompt - The text prompt to send
  * @param {Object} params - Additional parameters (temperature, max_tokens, etc.)
  * @returns {Promise<Object>} The API response
@@ -26,14 +28,25 @@ export const callModelAPI = async (model, prompt, params = {}) => {
       };
     }
 
+    // Get settings to check if the provider is enabled and configured
+    const settings = await getSettings();
+    
     // Call the main process to make the API request
     // This is a secure way to handle API keys in Electron
+    console.log('[apiService] Invoking call-api with:', { model, promptLength: prompt.length, params });
     const response = await ipcRenderer.invoke('call-api', {
       endpoint: 'generate',
       model,
       prompt,
       params
     });
+    
+    console.log('[apiService] Received response from main process:', response);
+
+    // Map response.result to response.text if necessary (backward compatibility)
+    if (response && response.success && typeof response.result === 'string' && typeof response.text === 'undefined') {
+      response.text = response.result;
+    }
 
     return response;
   } catch (error) {
@@ -153,14 +166,25 @@ export const processNode = async (node, nodeResults, inputEdges, allNodes) => {
       
       // Call the model API
       try {
-        return await callModelAPI(
-          node.data.model || 'gpt-3.5-turbo',
+        console.log(`[apiService] Processing model node ${node.id} with data:`, node.data);
+        const apiResult = await callModelAPI(
+          node.data.model || 'gpt-4.1-nano-2025-04-14',
           combinedPrompt,
           {
             temperature: node.data.temperature || 0.7,
             max_tokens: node.data.maxTokens || 500
           }
         );
+        
+        // Trim whitespace from the result text
+        if (apiResult && apiResult.text) {
+          apiResult.text = apiResult.text.trim();
+        } else {
+          console.warn(`[apiService] API result for node ${node.id} is missing text:`, apiResult);
+        }
+        
+        console.log(`[apiService] Returning result for model node ${node.id}:`, apiResult);
+        return apiResult;
       } catch (error) {
         return {
           text: `Error: ${error.message}`,
@@ -172,9 +196,14 @@ export const processNode = async (node, nodeResults, inputEdges, allNodes) => {
     case 'output':
       // Output nodes just pass through their input
       const firstInput = Object.values(inputData)[0];
-      return firstInput || {
-        text: 'No input received',
-        timestamp: new Date().toISOString()
+      // Ensure we construct a consistent result object
+      const outputText = (firstInput?.text || '').trim();
+      const outputTimestamp = firstInput?.timestamp || new Date().toISOString();
+      
+      return {
+        text: outputText || 'No input received', // Show message if text is empty after trim
+        timestamp: outputTimestamp,
+        nodeType: 'output' // Add nodeType for clarity
       };
       
     case 'custom':

@@ -257,9 +257,49 @@
 
 .node-footer {
   margin-top: 8px;
+  font-size: 10px;
+  color: #666;
   display: flex;
-  justify-content: space-between;
-  font-size: 11px;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.MuiBox-root[data-dark-mode="true"] .node-footer {
+  color: #aaa;
+}
+
+/* View Generation button styling */
+.node-footer .MuiButton-root {
+  min-height: 24px;
+  font-size: 10px;
+  padding: 2px 8px;
+  width: 90%;
+  margin: 0 auto;
+  opacity: 0.8;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.node-footer .MuiButton-root:hover {
+  opacity: 1;
+  transform: translateY(-1px);
+}
+
+.MuiBox-root[data-dark-mode="true"] .node-footer .MuiButton-root {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.MuiBox-root[data-dark-mode="true"] .node-footer .MuiButton-root:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.timestamp {
+  font-style: italic;
+  opacity: 0.8;
 }
 
 .dndflow {

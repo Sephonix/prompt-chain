@@ -9,7 +9,8 @@ import {
   TextField, 
   Slider,
   Divider,
-  Alert
+  Alert,
+  CircularProgress
 } from '@mui/material';
 import { getSettings, getAvailableModels, getProviderName } from '../utils/settingsService';
 
@@ -30,46 +31,75 @@ const ModelSelector = ({ data, onChange }) => {
   const [temperature, setTemperature] = useState(data.temperature || 0.7);
   const [maxTokens, setMaxTokens] = useState(data.maxTokens || 500);
   const [systemPrompt, setSystemPrompt] = useState(data.content || '');
+  const [loading, setLoading] = useState(true);
+  const [providerNames, setProviderNames] = useState({});
 
   // Load available providers and models on mount
   useEffect(() => {
-    const settings = getSettings();
-    const enabledProviders = Object.entries(settings.providers)
-      .filter(([_, provider]) => provider.enabled)
-      .map(([id, _]) => id);
+    const loadSettings = async () => {
+      try {
+        setLoading(true);
+        const settings = await getSettings();
+        const enabledProviders = Object.entries(settings.providers)
+          .filter(([_, provider]) => provider.enabled)
+          .map(([id, _]) => id);
+        
+        setAvailableProviders(enabledProviders);
+        
+        // Load provider names
+        const names = {};
+        for (const providerId of enabledProviders) {
+          names[providerId] = await getProviderName(providerId);
+        }
+        setProviderNames(names);
+        
+        // Set models for the selected provider
+        await updateAvailableModels(selectedProvider);
+        
+        // If no provider is selected yet, use the first available one
+        if (!data.providerId && enabledProviders.length > 0) {
+          await handleProviderChange(enabledProviders[0]);
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
     
-    setAvailableProviders(enabledProviders);
-    
-    // Set models for the selected provider
-    updateAvailableModels(selectedProvider);
-    
-    // If no provider is selected yet, use the first available one
-    if (!data.providerId && enabledProviders.length > 0) {
-      handleProviderChange(enabledProviders[0]);
-    }
+    loadSettings();
   }, []);
 
   // Fetch all models for the selected provider
-  const updateAvailableModels = (providerId) => {
-    const settings = getSettings();
-    const provider = settings.providers[providerId];
-    
-    if (provider && provider.enabled) {
-      setAvailableModels(provider.models || []);
+  const updateAvailableModels = async (providerId) => {
+    try {
+      const settings = await getSettings();
+      const provider = settings.providers[providerId];
       
-      // If current model doesn't exist in this provider, select first available
-      const modelExists = provider.models.some(m => m.id === selectedModel);
-      if (!modelExists && provider.models.length > 0) {
-        setSelectedModel(provider.models[0].id);
-        if (onChange) {
-          onChange({
-            ...data,
-            providerId,
-            model: provider.models[0].id
-          });
+      if (provider && provider.enabled) {
+        // Get provider info from main process
+        const providersInfo = await window.electron.ipcRenderer.invoke('get-providers-info');
+        const providerModels = providersInfo[providerId]?.models || [];
+        
+        setAvailableModels(providerModels);
+        
+        // If current model doesn't exist in this provider, select first available
+        const modelExists = providerModels.some(m => m.id === selectedModel);
+        if (!modelExists && providerModels.length > 0) {
+          setSelectedModel(providerModels[0].id);
+          if (onChange) {
+            onChange({
+              ...data,
+              providerId,
+              model: providerModels[0].id
+            });
+          }
         }
+      } else {
+        setAvailableModels([]);
       }
-    } else {
+    } catch (error) {
+      console.error('Error updating available models:', error);
       setAvailableModels([]);
     }
   };
@@ -79,7 +109,7 @@ const ModelSelector = ({ data, onChange }) => {
     const icons = {
       openai: openaiIcon,
       anthropic: anthropicIcon,
-      mistralai: mistralaiIcon,
+      mistral: mistralaiIcon,
       cohere: cohereIcon,
       deepseek: deepseekIcon,
       grok: grokIcon,
@@ -90,9 +120,9 @@ const ModelSelector = ({ data, onChange }) => {
   };
 
   // Handle provider change
-  const handleProviderChange = (providerId) => {
+  const handleProviderChange = async (providerId) => {
     setSelectedProvider(providerId);
-    updateAvailableModels(providerId);
+    await updateAvailableModels(providerId);
     
     if (onChange) {
       onChange({
@@ -150,6 +180,17 @@ const ModelSelector = ({ data, onChange }) => {
     }
   };
 
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+        <CircularProgress size={24} />
+        <Typography variant="body2" sx={{ ml: 2 }}>
+          Loading model settings...
+        </Typography>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ p: 2 }}>
       <Typography variant="subtitle1" gutterBottom>Model Configuration</Typography>
@@ -176,11 +217,11 @@ const ModelSelector = ({ data, onChange }) => {
                       <Box 
                         component="img" 
                         src={getProviderIcon(providerId)} 
-                        alt={`${getProviderName(providerId)} logo`}
+                        alt={`${providerNames[providerId] || providerId} logo`}
                         sx={{ width: 20, height: 20, mr: 1 }}
                       />
                     )}
-                    {getProviderName(providerId)}
+                    {providerNames[providerId] || providerId}
                   </Box>
                 </MenuItem>
               ))}
