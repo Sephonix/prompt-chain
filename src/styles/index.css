@@ -1,0 +1,337 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Styles */
+.react-flow__node {
+  border-radius: 5px;
+  padding: 10px;
+  font-size: 14px;
+  color: #222;
+  text-align: center;
+  border-width: 2px;
+  width: 250px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
+  transition: box-shadow 0.3s ease;
+}
+
+.react-flow__node:hover {
+  box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Override any node-specific shadow behaviors */
+
+/* Reset and apply consistent shadows to ensure all node types have the same shadow behavior */
+.react-flow__node-input,
+.react-flow__node-output,
+.react-flow__node-model,
+.react-flow__node-custom {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.react-flow__node-input:hover,
+.react-flow__node-output:hover,
+.react-flow__node-model:hover,
+.react-flow__node-custom:hover {
+  box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Dark mode consistent shadows */
+.MuiBox-root[data-dark-mode="true"] .react-flow__node-input,
+.MuiBox-root[data-dark-mode="true"] .react-flow__node-output,
+.MuiBox-root[data-dark-mode="true"] .react-flow__node-model,
+.MuiBox-root[data-dark-mode="true"] .react-flow__node-custom {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.MuiBox-root[data-dark-mode="true"] .react-flow__node-input:hover,
+.MuiBox-root[data-dark-mode="true"] .react-flow__node-output:hover,
+.MuiBox-root[data-dark-mode="true"] .react-flow__node-model:hover,
+.MuiBox-root[data-dark-mode="true"] .react-flow__node-custom:hover {
+  box-shadow: 0 8px 12px rgba(0, 0, 0, 0.4);
+}
+
+.react-flow__node-input {
+  background-color: #d4f1f9;
+  border-color: #75c7e6;
+}
+
+.react-flow__node-output {
+  background-color: #d4f9d4;
+  border-color: #75e675;
+}
+
+.react-flow__node-model {
+  background-color: #f9d4f9;
+  border-color: #e675e6;
+}
+
+/* Provider-specific colors for model nodes */
+.react-flow__node-model[data-provider="openai"] {
+  background-color: #E7F5F0;
+  border-color: #10a37f;
+}
+
+.react-flow__node-model[data-provider="anthropic"] {
+  background-color: #F6F0FD;
+  border-color: #A35BFF;
+}
+
+.react-flow__node-model[data-provider="mistralai"] {
+  background-color: #E7EDFF;
+  border-color: #0042DA;
+}
+
+.react-flow__node-model[data-provider="cohere"] {
+  background-color: #F0EEFB;
+  border-color: #5436DA;
+}
+
+.react-flow__node-model[data-provider="deepseek"] {
+  background-color: #E6F0FF;
+  border-color: #0055D5;
+}
+
+.react-flow__node-model[data-provider="grok"] {
+  background-color: #FFE6F2;
+  border-color: #FF0080;
+}
+
+.react-flow__node-model[data-provider="openrouter"] {
+  background-color: #F7F7F7;
+  border-color: #37352F;
+}
+
+.react-flow__node-custom {
+  background-color: #f9f9d4;
+  border-color: #e6e675;
+}
+
+/* Dark mode styles */
+.MuiBox-root[data-dark-mode="true"] .react-flow__node {
+  color: #f8f8f8;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.MuiBox-root[data-dark-mode="true"] .react-flow__node:hover {
+  box-shadow: 0 8px 12px rgba(0, 0, 0, 0.4);
+}
+
+.MuiBox-root[data-dark-mode="true"] .react-flow__node-input {
+  background-color: #003b4a;
+  border-color: #0097c0;
+}
+
+.MuiBox-root[data-dark-mode="true"] .react-flow__node-output {
+  background-color: #004000;
+  border-color: #00c000;
+}
+
+.MuiBox-root[data-dark-mode="true"] .react-flow__node-model {
+  background-color: #400040;
+  border-color: #c000c0;
+}
+
+.MuiBox-root[data-dark-mode="true"] .react-flow__node-custom {
+  background-color: #404000;
+  border-color: #c0c000;
+}
+
+/* Provider-specific colors for model nodes in dark mode */
+.MuiBox-root[data-dark-mode="true"] .react-flow__node-model[data-provider="openai"] {
+  background-color: #0a3329;
+  border-color: #10a37f;
+}
+
+.MuiBox-root[data-dark-mode="true"] .react-flow__node-model[data-provider="anthropic"] {
+  background-color: #2a0e4a;
+  border-color: #A35BFF;
+}
+
+.MuiBox-root[data-dark-mode="true"] .react-flow__node-model[data-provider="mistralai"] {
+  background-color: #0a1a4a;
+  border-color: #0042DA;
+}
+
+.MuiBox-root[data-dark-mode="true"] .react-flow__node-model[data-provider="cohere"] {
+  background-color: #1a1540;
+  border-color: #5436DA;
+}
+
+.MuiBox-root[data-dark-mode="true"] .react-flow__node-model[data-provider="deepseek"] {
+  background-color: #0a1a4a;
+  border-color: #0055D5;
+}
+
+.MuiBox-root[data-dark-mode="true"] .react-flow__node-model[data-provider="grok"] {
+  background-color: #3a0920;
+  border-color: #FF0080;
+}
+
+.MuiBox-root[data-dark-mode="true"] .react-flow__node-model[data-provider="openrouter"] {
+  background-color: #222222;
+  border-color: #999999;
+}
+
+.react-flow__handle {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #555;
+}
+
+.react-flow__edge-path {
+  stroke: #888;
+  stroke-width: 2;
+}
+
+.MuiBox-root[data-dark-mode="true"] .react-flow__edge-path {
+  stroke: #ccc;
+}
+
+.react-flow__controls {
+  box-shadow: 0 0 2px 1px rgba(0, 0, 0, 0.08);
+}
+
+.node-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.node-header {
+  font-weight: bold;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.provider-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: #555;
+  background-color: rgba(255, 255, 255, 0.5);
+  border-radius: 12px;
+  padding: 2px 8px;
+}
+
+.MuiBox-root[data-dark-mode="true"] .provider-badge {
+  color: #ccc;
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+.provider-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 4px;
+}
+
+.provider-name {
+  font-weight: normal;
+  font-size: 10px;
+}
+
+.model-info {
+  font-size: 10px;
+  color: #666;
+  font-style: italic;
+}
+
+.MuiBox-root[data-dark-mode="true"] .model-info {
+  color: #aaa;
+}
+
+.node-body {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 150px;
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.node-footer {
+  margin-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+}
+
+.dndflow {
+  flex-direction: column;
+  display: flex;
+  flex-grow: 1;
+  height: 100%;
+}
+
+.dndflow aside {
+  border-right: 1px solid #eee;
+  padding: 15px 10px;
+  font-size: 12px;
+  background: #fcfcfc;
+}
+
+.MuiBox-root[data-dark-mode="true"] .dndflow aside {
+  border-right: 1px solid #333;
+  background: #1e1e1e;
+}
+
+.dndflow aside .description {
+  margin-bottom: 10px;
+}
+
+.dndflow .dndnode {
+  height: 40px;
+  padding: 4px;
+  border: 1px solid #1a192b;
+  border-radius: 2px;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: grab;
+  background: white;
+}
+
+.MuiBox-root[data-dark-mode="true"] .dndflow .dndnode {
+  background: #333;
+  color: #f8f8f8;
+}
+
+.dndflow .dndnode.input {
+  border-color: #0041d0;
+}
+
+.dndflow .dndnode.output {
+  border-color: #ff0072;
+}
+
+.dndflow .reactflow-wrapper {
+  flex-grow: 1;
+  height: 100%;
+}
+
+/* Dark mode for the flow background */
+.MuiBox-root[data-dark-mode="true"] .react-flow__background {
+  background-color: #1e1e1e;
+}
+
+.MuiBox-root[data-dark-mode="true"] .react-flow__controls {
+  background-color: #333;
+  color: #fff;
+}
+
+.MuiBox-root[data-dark-mode="true"] .react-flow__controls button {
+  background-color: #444;
+  color: #fff;
+  border-color: #555;
+}
+
+.MuiBox-root[data-dark-mode="true"] .react-flow__controls button:hover {
+  background-color: #555;
+} 
