@@ -1,6 +1,6 @@
 {
   "name": "prompt-chain",
-  "version": "1.0.0",
+  "version": "0.0.1-alpha.1",
   "description": "Node based text generation environment for the experimentation of linking prompts together.",
   "main": "src/main.js",
   "scripts": {
